@@ -26,13 +26,47 @@ public class HTTPServer extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
+    	String uri = session.getUri();
+    	String newUri = uri;
+        Log.i( TAG, "Request at uri: '" + uri + "'");
+        
+        if(!uri.endsWith("/")) {
+        	newUri = uri + "/";
+        	return newFixedLengthResponse(
+        			Response.Status.REDIRECT,
+        			NanoHTTPD.MIME_HTML,
+        			"<html><head></head><meta http-equiv=\"refresh\" content=\"0; url=" + newUri + "\" /><body>Redirected: <a href=\"" + newUri + "\">" + newUri + "</a></body></html>"
+        			);
+        }
+    	
+    	// no switch on strings for java 1.6 which unfortunately we have to use
+    	
+    	if(uri.equals("/")) {
+    		return serveHome(session);
+    	} else if(uri.equals("/sms/send/")) {
+    		return serveSendSMS(session);
+    	}
+    	
+    	return serve404(session);
+    }
+    
+    public Response serveHome(IHTTPSession session) {
         String msg = "<html><body><h1>Hello server</h1>\n";
         Map<String, String> parms = session.getParms();
+
         if (parms.get("username") == null) {
             msg += "<form action='?' method='get'>\n  <p>Your name: <input type='text' name='username'></p>\n" + "</form>\n";
         } else {
             msg += "<p>Hello, " + parms.get("username") + "!</p>";
         }
         return newFixedLengthResponse( msg + "</body></html>\n" );
+    }
+    
+    public Response serveSendSMS(IHTTPSession session) {
+    	return newFixedLengthResponse("<html><body>SMS Sent</body></html>");
+    }
+    
+    public Response serve404(IHTTPSession session) {
+    	return newFixedLengthResponse("<html><body><h1>404</h1><h3>Page not found</h3></body></html>");
     }
 }

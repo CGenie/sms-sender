@@ -8,5 +8,6 @@
         android:id="@+id/text_view"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        android:text="@string/host"
         />
 </LinearLayout>
