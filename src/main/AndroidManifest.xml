@@ -21,11 +21,6 @@
 
 	   <service android:name=".HTTPService" />
 	   
-	   <receiver android:name=".SMSArrivedBroadcastReceiver">
-           <intent-filter>
-               <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-           </intent-filter>
-        </receiver>
     </application>
     <uses-sdk android:minSdkVersion="4" />
 

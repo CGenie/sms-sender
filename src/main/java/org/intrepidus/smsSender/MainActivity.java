@@ -10,16 +10,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.util.Log;
-import android.widget.TextView;
 import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.SmsMessage;
+import android.util.Log;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
     private static final String TAG = "org.intrepidus.smsSender.MainActivity";
@@ -37,7 +34,7 @@ public class MainActivity extends Activity {
             TextView textView = (TextView) findViewById(R.id.text_view);
             
             if(isOnline(intent)) {
-            	textView.setText(wifiIpAddress());
+            	textView.setText(wifiIpAddress() + ":8080");
      	        // e.g. To check the Network Name or other info:
 	            //WifiManager wifiManager = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
   	            //WifiInfo wifiInfo = wifiManager.getConnectionInfo();
@@ -80,6 +77,8 @@ public class MainActivity extends Activity {
         setContentView(R.layout.main_layout);
 	    Log.i(TAG, "onCreate done");
 	    
+	    final LocalBroadcastManager broadcastManager = LocalBroadcastManager.getInstance(this);
+	    
 	    Context context = getApplicationContext();
 	    IntentFilter intentFilter = new IntentFilter();
 	    WifiConnectedBroadcastReceiver wifiConnection = new WifiConnectedBroadcastReceiver(context);
@@ -103,9 +102,35 @@ public class MainActivity extends Activity {
 				smsService.sendTextMessage(destination, source, text);
 			}
     	};
-    	LocalBroadcastManager.getInstance(this).registerReceiver(smsSendBroadcastReceiver, new IntentFilter("send-sms"));
+    	broadcastManager.registerReceiver(smsSendBroadcastReceiver, new IntentFilter("send-sms"));
     	
- 
+    	BroadcastReceiver smsArrivedBroadcastReceiver = new BroadcastReceiver() {
+    		@Override
+    		public void onReceive(Context context, Intent intent) {
+   		        Bundle bundle = intent.getExtras();           //---get the SMS message passed in---
+   		        SmsMessage[] msgs = null;
+   		        String msgFrom;
+   		        if (bundle != null) {
+   		            //---retrieve the SMS message received---
+   		            try {
+   		                Object[] pdus = (Object[]) bundle.get("pdus");
+   		                msgs = new SmsMessage[pdus.length];
+   		                for(int i = 0; i < msgs.length; i++) {
+   		                    msgs[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
+   		                    msgFrom = msgs[i].getOriginatingAddress();
+   		                    String msgBody = msgs[i].getMessageBody();
+   			                Log.i(TAG, "SMS Arrived from: " + msgFrom + " with body: " + msgBody);
+   			            	
+   			            	smsService.broadcastSMS(context, msgFrom, msgBody);
+   		                }
+   		            }catch(Exception e){
+   	                    Log.e(TAG, "SMS Arrived exception caught " + e.getMessage());
+   		            }
+   		        }
+   		    }
+    	};
+		// TODO: remove this hardcoded string
+    	this.registerReceiver(smsArrivedBroadcastReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
     }
     
     @Override

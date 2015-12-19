@@ -3,6 +3,7 @@ package org.intrepidus.smsSender;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -24,8 +25,7 @@ public class HTTPServer extends NanoHTTPD {
     public void setHttpService(HTTPService service) {
     	this.service = service;
     }
-
-    @Override
+    
     public Response serve(IHTTPSession session) {
     	String uri = session.getUri();
     	String newUri = uri;
@@ -46,6 +46,10 @@ public class HTTPServer extends NanoHTTPD {
     		return serveHome(session);
     	} else if(uri.equals("/sms/send/")) {
     		return serveSendSMS(session);
+    	} else if(uri.equals("/sms/webhooks/list/")) {
+    		return serveWebhooksList(session);
+    	} else if(uri.equals("/sms/webhooks/add/")) {
+    		return serveWebhookAdd(session);
     	}
     	
     	return serve404(session);
@@ -75,6 +79,8 @@ public class HTTPServer extends NanoHTTPD {
             } catch (ResponseException re) {
                 return newFixedLengthResponse(re.getStatus(), MIME_PLAINTEXT, re.getMessage());
             }
+    	} else {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Only POST allowed");
     	}
     	
     	String body = session.getQueryParameterString();
@@ -108,6 +114,66 @@ public class HTTPServer extends NanoHTTPD {
     	}
     	
     	return newFixedLengthResponse("Service not null or data empty.");
+    }
+    
+    public Response serveWebhooksList(IHTTPSession session) {
+    	JSONArray data = new JSONArray();
+    	String[] endpoints = service.getSMSReceiveEndpoints();
+    	
+    	if(endpoints == null) {
+    		return newFixedLengthResponse("[]");
+    	}
+    	
+   		for(int i = 0; i < endpoints.length; i++) {
+   			data.put(endpoints[i]);
+   		}
+    	
+    	return newFixedLengthResponse(data.toString());
+    }
+    
+    public Response serveWebhookAdd(IHTTPSession session) {
+    	Map<String, String> files = new HashMap<String, String>();
+    	Method method = session.getMethod();
+    	
+    	if(Method.POST.equals(method)) {
+            try {
+                session.parseBody(files);
+            } catch (IOException ioe) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
+            } catch (ResponseException re) {
+                return newFixedLengthResponse(re.getStatus(), MIME_PLAINTEXT, re.getMessage());
+            }
+    	} else {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Only POST allowed");
+    	}
+    	
+    	String body = session.getQueryParameterString();
+    	
+    	Log.i(TAG, "Received body: " + body);
+    	Log.i(TAG, "Received files: " + files.toString());
+    	
+    	JSONObject data;
+    	String endpoint;
+    	
+    	try {
+    		data = new JSONObject(body);
+    	} catch (JSONException e) {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading JSON: " + e.toString());
+    	}
+    	
+    	try {
+    		endpoint = data.getString("endpoint");
+    	} catch (JSONException e) {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error parsing JSON: " + e.toString());
+    	}
+    	
+    	if(this.service != null && endpoint != null) {
+    		service.addSMSReceiveEndpoint(endpoint);
+    		
+    		return newFixedLengthResponse("Added SMS Receive Webhook endpoint");
+    	}
+    	
+    	return newFixedLengthResponse("Service not null or endpoint empty.");
     }
     
     public Response serve404(IHTTPSession session) {

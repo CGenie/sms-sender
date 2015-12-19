@@ -12,9 +12,9 @@ import org.intrepidus.smsSender.HTTPServer;
 
 public class HTTPService extends IntentService {
     private static final String TAG = "org.intrepidus.smsSender.HTTPService";
-
-    private HTTPServer server;
     
+    private HTTPServer server;
+
     public static final int SMS_RECEIVED = 0;
 
 
@@ -41,7 +41,6 @@ public class HTTPService extends IntentService {
     	super.onCreate();
     }
   
-
     /**
      * The IntentService calls this method from the default worker thread with
      * the intent that started the service. When this method returns, IntentService
@@ -58,5 +57,13 @@ public class HTTPService extends IntentService {
     	intent.putExtra("source", source);
     	intent.putExtra("text", text);
     	LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+    
+    public String[] getSMSReceiveEndpoints() {
+    	return SMSService.getSMSReceiveEndpoints(this);
+    }
+    
+    public void addSMSReceiveEndpoint(String endpoint) {
+    	SMSService.addSMSReceiveEndpoint(this, endpoint);
     }
 }
