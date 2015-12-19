@@ -19,6 +19,7 @@ import android.os.Parcelable;
 import android.util.Log;
 import android.widget.TextView;
 import android.support.v4.content.LocalBroadcastManager;
+import android.telephony.SmsMessage;
 
 public class MainActivity extends Activity {
     private static final String TAG = "org.intrepidus.smsSender.MainActivity";
@@ -103,6 +104,8 @@ public class MainActivity extends Activity {
 			}
     	};
     	LocalBroadcastManager.getInstance(this).registerReceiver(smsSendBroadcastReceiver, new IntentFilter("send-sms"));
+    	
+ 
     }
     
     @Override
