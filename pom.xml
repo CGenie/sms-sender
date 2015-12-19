@@ -25,6 +25,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.google.android</groupId>
+            <artifactId>support-v4</artifactId>
+            <version>r6</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.nanohttpd</groupId>
             <artifactId>nanohttpd</artifactId>
             <version>2.2.0</version>
@@ -48,7 +54,7 @@
                     <extensions>true</extensions>
                     <configuration>
                         <emulator>
-                            <adv>emulator-5556</adv>
+                            <adv>emulator-5554</adv>
                         </emulator>
                     </configuration>
                 </plugin>

@@ -14,11 +14,16 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.widget.TextView;
+import android.support.v4.content.LocalBroadcastManager;
 
 public class MainActivity extends Activity {
     private static final String TAG = "org.intrepidus.smsSender.MainActivity";
+    
+    private BroadcastReceiver smsSendBroadcastReceiver;
     
     private class WifiConnectedBroadcastReceiver extends BroadcastReceiver {
     	private Context context;
@@ -60,7 +65,7 @@ public class MainActivity extends Activity {
             try {
                 ipAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
             } catch (UnknownHostException ex) {
-                Log.e("WIFIIP", "Unable to get host address.");
+                Log.e(TAG, "Unable to get host address.");
                 ipAddressString = null;
             }
 
@@ -80,8 +85,29 @@ public class MainActivity extends Activity {
 	    intentFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
 	    registerReceiver(wifiConnection, intentFilter);
 
+		final SMSService smsService = new SMSService();
+
 	    Intent intent = new Intent(this, HTTPService.class);
 		startService(intent);
+
+    	smsSendBroadcastReceiver = new BroadcastReceiver() {
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				Bundle extras = intent.getExtras();
+				
+				String destination = extras.getString("destination");
+				String source = extras.getString("source");
+				String text = extras.getString("text");
+				
+				smsService.sendTextMessage(destination, source, text);
+			}
+    	};
+    	LocalBroadcastManager.getInstance(this).registerReceiver(smsSendBroadcastReceiver, new IntentFilter("send-sms"));
+    }
+    
+    @Override
+    public void onDestroy() {
+    	LocalBroadcastManager.getInstance(this).unregisterReceiver(smsSendBroadcastReceiver);
     }
 
     @Override
@@ -89,6 +115,5 @@ public class MainActivity extends Activity {
         super.onResume();
 
     }
-
-    
+        
 }

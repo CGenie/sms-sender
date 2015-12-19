@@ -1,27 +1,28 @@
 package org.intrepidus.smsSender;
 
+import java.util.HashMap;
 import java.util.Map;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import fi.iki.elonen.NanoHTTPD;
-
 import android.util.Log;
 
 public class HTTPServer extends NanoHTTPD {
     private static final String TAG = "org.intrepidus.smsSender.HTTPServer";
-
+    
+    private HTTPService service;
+    
     public HTTPServer() throws IOException {
         super("0.0.0.0", 8080);
         start();
         Log.i( TAG, "\nRunning! Point your browers to http://localhost:8080/ \n" );
     }
-
-    public static void main(String[] args) {
-        try {
-            new HTTPServer();
-        }
-        catch( IOException ioe ) {
-            Log.e( TAG, "Couldn't start server:\n" + ioe );
-        }
+    
+    public void setHttpService(HTTPService service) {
+    	this.service = service;
     }
 
     @Override
@@ -33,10 +34,10 @@ public class HTTPServer extends NanoHTTPD {
         if(!uri.endsWith("/")) {
         	newUri = uri + "/";
         	return newFixedLengthResponse(
-        			Response.Status.REDIRECT,
-        			NanoHTTPD.MIME_HTML,
-        			"<html><head></head><meta http-equiv=\"refresh\" content=\"0; url=" + newUri + "\" /><body>Redirected: <a href=\"" + newUri + "\">" + newUri + "</a></body></html>"
-        			);
+        		Response.Status.REDIRECT,
+        		NanoHTTPD.MIME_HTML,
+        		"<html><head></head><meta http-equiv=\"refresh\" content=\"0; url=" + newUri + "\" /><body>Redirected: <a href=\"" + newUri + "\">" + newUri + "</a></body></html>"
+        	);
         }
     	
     	// no switch on strings for java 1.6 which unfortunately we have to use
@@ -63,7 +64,50 @@ public class HTTPServer extends NanoHTTPD {
     }
     
     public Response serveSendSMS(IHTTPSession session) {
-    	return newFixedLengthResponse("<html><body>SMS Sent</body></html>");
+    	Map<String, String> files = new HashMap<String, String>();
+    	Method method = session.getMethod();
+    	
+    	if(Method.POST.equals(method)) {
+            try {
+                session.parseBody(files);
+            } catch (IOException ioe) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "SERVER INTERNAL ERROR: IOException: " + ioe.getMessage());
+            } catch (ResponseException re) {
+                return newFixedLengthResponse(re.getStatus(), MIME_PLAINTEXT, re.getMessage());
+            }
+    	}
+    	
+    	String body = session.getQueryParameterString();
+    	
+    	Log.i(TAG, "Received body: " + body);
+    	Log.i(TAG, "Received files: " + files.toString());
+    	
+    	JSONObject data;
+    	String destination;
+    	String source;
+    	String text;
+    	
+    	try {
+    		data = new JSONObject(body);
+    	} catch (JSONException e) {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading JSON: " + e.toString());
+    	}
+    	
+    	try {
+    		destination = data.getString("destination");
+    		source = data.getString("source");
+    		text = data.getString("text");
+    	} catch (JSONException e) {
+    		return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error parsing JSON: " + e.toString());
+    	}
+    	
+    	if(this.service != null && destination != null && source != null && text != null) {
+    		service.sendTextMessage(destination, source, text);
+    		
+    		return newFixedLengthResponse("<html><body>SMS Sent</body></html>");
+    	}
+    	
+    	return newFixedLengthResponse("Service not null or data empty.");
     }
     
     public Response serve404(IHTTPSession session) {
